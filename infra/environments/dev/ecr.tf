@@ -12,7 +12,7 @@ module "ecr" {
   attach_repository_policy      = false
   repository_encryption_type    = var.encryption_type
   repository_image_scan_on_push = var.image_scan_on_push
-  repository_force_delete = true
+  repository_force_delete       = true
   #Must be one of: `MUTABLE`, `MUTABLE_WITH_EXCLUSION`, `IMMUTABLE`, or `IMMUTABLE_WITH_EXCLUSION`. Defaults to `IMMUTABLE`
   repository_image_tag_mutability = var.image_tag_mutability
   repository_lifecycle_policy = jsonencode({
@@ -34,5 +34,5 @@ module "ecr" {
   })
 
   tags = var.resource_tags
-  
+
 }

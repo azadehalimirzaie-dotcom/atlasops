@@ -1,0 +1,29 @@
+# Sample workflow to access AWS resources when workflow is tied to branch
+# The workflow creates a static website using Amazon S3
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+name: test AWS OIDC
+on:
+  workflow_dispatch
+
+  # permission can be added at job level or workflow level
+permissions:
+  id-token: write   # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+jobs:
+  test-aws-access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Authenticate to AWS using OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::483598626808:role/AtlasOps-dev-github-actions
+          role-session-name: atlasops-oids-test
+          aws-region: us-east-1
+   
+      - name: Show AWS Identity
+        run: ws sts get-caller-identity

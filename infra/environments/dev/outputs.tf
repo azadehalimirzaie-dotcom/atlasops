@@ -166,3 +166,11 @@ output "subscriptions" {
   description = "Map of subscriptions created and their attributes"
   value       = module.sns_topic.subscriptions
 }
+
+#####################
+#Github_actions
+####################
+output "github_actions_role_arn" {
+  description = "IAM role assumed by GitHub Actions to push AtlasOps images."
+  value       = aws_iam_role.github_actions.arn
+}
