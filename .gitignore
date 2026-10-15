@@ -1,0 +1,33 @@
+# Local configuration and credentials
+env.sh
+.env
+.env.*
+!.env.example
+.aws/
+.kube/
+*kubeconfig*
+*.pem
+*.key
+
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+!*.example.tfvars
+crash.log
+crash.*.log
+.terraform.tfstate.lock.info
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Generated files
+build/
+dist/
+.DS_Store
