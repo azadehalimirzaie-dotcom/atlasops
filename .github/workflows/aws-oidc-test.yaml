@@ -55,4 +55,4 @@ jobs:
           aws-region: us-east-1
    
       - name: Show AWS Identity
-        run: ws sts get-caller-identity
+        run: aws sts get-caller-identity
