@@ -60,8 +60,10 @@ resource "aws_iam_role_policy" "github_ecr_push" {
           "ecr:BatchGetImage"
         ]
         Effect   = "Allow"
-        Resource = "arn:aws:ecr:${var.region}:483598626808:repository/${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-ingestion"
-        Resource = "arn:aws:ecr:${var.region}:483598626808:repository/${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-worker"
+        Resource = [
+          "arn:aws:ecr:${var.region}:483598626808:repository/${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-ingestion",
+          "arn:aws:ecr:${var.region}:483598626808:repository/${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-worker"
+        ]
       }
     ]
   })
