@@ -22,7 +22,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
-          image: 483598626808.dkr.ecr.us-east-1.amazonaws.com/atlasops-dev-worker:v0.2.2
+          image: 483598626808.dkr.ecr.us-east-1.amazonaws.com/atlasops-dev-worker:681020852d789b3d0cfe1b9b6141ab27de56464d
           envFrom:
             - configMapRef:
                 name: atlasops-config

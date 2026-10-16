@@ -59,10 +59,10 @@ resource "aws_iam_role_policy" "github_ecr_push" {
           "ecr:UploadLayerPart",
           "ecr:BatchGetImage"
         ]
-        Effect   = "Allow"
+        Effect = "Allow"
         Resource = [
-          "arn:aws:ecr:${var.region}:483598626808:repository/${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-ingestion",
-          "arn:aws:ecr:${var.region}:483598626808:repository/${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-worker"
+          "arn:aws:ecr:${var.region}:483598626808:repository/atlasops-dev-ingestion",
+          "arn:aws:ecr:${var.region}:483598626808:repository/atlasops-dev-worker"
         ]
       }
     ]
