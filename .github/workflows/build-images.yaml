@@ -1,0 +1,64 @@
+name: Build and push AtlasOps images
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "app/**"
+      - ".dockerignore"
+      - ".github/workflows/build-images.yml"
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - ingestion
+          - worker
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Authenticate to AWS using OIDC
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::483598626808:role/AtlasOps-dev-github-actions
+          aws-region: us-east-1
+          role-session-name: atlasops-build-${{ matrix.service }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          SERVICE: ${{ matrix.service }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build --platform linux/amd64 \
+            -f "app/${SERVICE}/Dockerfile" \
+            -t "${REGISTRY}/atlasops-dev-${SERVICE}:${IMAGE_TAG}" \
+            .
+
+      - name: Push Docker image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          SERVICE: ${{ matrix.service }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE="${REGISTRY}/atlasops-dev-${SERVICE}:${IMAGE_TAG}"
+          docker push "$IMAGE"
+          echo "### Published image" >> "$GITHUB_STEP_SUMMARY"
+          echo "\`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
