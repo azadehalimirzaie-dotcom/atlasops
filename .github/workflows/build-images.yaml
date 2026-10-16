@@ -8,7 +8,7 @@ on:
     paths:
       - "app/**"
       - ".dockerignore"
-      - ".github/workflows/build-images.yml"
+      - ".github/workflows/build-images.yaml"
 
 permissions:
   id-token: write
