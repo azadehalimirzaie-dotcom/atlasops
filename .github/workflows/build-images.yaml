@@ -62,3 +62,74 @@ jobs:
           docker push "$IMAGE"
           echo "### Published image" >> "$GITHUB_STEP_SUMMARY"
           echo "\`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+  update-manifests:
+    name: Propose deployment update
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Update image tags
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          registry = "483598626808.dkr.ecr.us-east-1.amazonaws.com"
+          tag = os.environ["IMAGE_TAG"]
+
+          for service in ("ingestion", "worker"):
+              path = Path(f"kubernetes/base/{service}.yaml")
+              repository = f"{registry}/atlasops-dev-{service}"
+
+              pattern = (
+                  r"(?m)^([ \t]*image:[ \t]*)"
+                  + re.escape(repository)
+                  + r":[^\s]+[ \t]*$"
+              )
+
+              updated, count = re.subn(
+                  pattern,
+                  lambda match: f"{match.group(1)}{repository}:{tag}",
+                  path.read_text(),
+              )
+
+              if count != 1:
+                  raise SystemExit(
+                      f"Expected exactly one matching image in {path}; found {count}"
+                  )
+
+              path.write_text(updated)
+              print(f"Updated {path} to {repository}:{tag}")
+          PY
+
+      - name: Create deployment pull request
+        uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          base: main
+          branch: deploy/atlasops-${{ github.sha }}
+          title: "Deploy AtlasOps images from ${{ github.sha }}"
+          commit-message: "Update AtlasOps deployment image tags"
+          body: |
+            Updates ingestion and worker to images built successfully
+            from commit ${{ github.sha }}.
+
+            Review the image changes before merging.
+            Argo CD will deploy the manifests after merge.
+          add-paths: |
+            kubernetes/base/ingestion.yaml
+            kubernetes/base/worker.yaml
