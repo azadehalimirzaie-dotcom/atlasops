@@ -1,9 +1,11 @@
+# Deploy the HTTP API that validates events and enqueues them in SQS.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: ingestion
   namespace: atlasops
 spec:
+  # Run two pod replicas for availability; both select the same application label.
   replicas: 2
   selector:
     matchLabels:
@@ -13,7 +15,9 @@ spec:
       labels:
         app: ingestion
     spec:
+      # Use the app-specific service account and its scoped AWS IAM permissions.
       serviceAccountName: ingestion
+      # Run as the non-root user created in the image and use the default syscall filter.
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -21,13 +25,16 @@ spec:
           type: RuntimeDefault
       containers:
         - name: ingestion
+          # Pin to the immutable commit-SHA image built by CI; deployment PRs update this tag.
           image: 483598626808.dkr.ecr.us-east-1.amazonaws.com/atlasops-dev-ingestion:c140dffbc3adbed6fe336e38c9aca5d595c158d9
           ports:
             - name: http
-              containerPort: 8080
+              containerPort: 8080 # Ingestion container
+          # Load queue, table, topic, and region settings from atlasops-config.
           envFrom:
             - configMapRef:
                 name: atlasops-config
+          # Requests reserve scheduling capacity; limits cap container CPU and memory use.
           resources:
             requests:
               cpu: "100m"
@@ -35,21 +42,25 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          # Prevent privilege escalation and remove all Linux capabilities.
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
               drop: ["ALL"]
+          # Allow up to about one minute for startup before normal health checks take over.
           startupProbe:
             httpGet:
               path: /health
               port: http
             periodSeconds: 5
             failureThreshold: 12
+          # Send Service traffic only to pods whose health endpoint responds successfully.
           readinessProbe:
             httpGet:
               path: /health
               port: http
             periodSeconds: 5
+          # Restart a container after repeated failures of the process-health endpoint.
           livenessProbe:
             httpGet:
               path: /health
@@ -62,10 +73,11 @@ metadata:
   name: ingestion
   namespace: atlasops
 spec:
+  # Expose the API inside the cluster; optional Ingress or port-forwarding provides external access.
   type: ClusterIP
   selector:
     app: ingestion
   ports:
     - name: http
-      port: 80
-      targetPort: http
+      port: 80  # Referenced by the Ingress backend
+      targetPort: http  # Named container port, which is 8080

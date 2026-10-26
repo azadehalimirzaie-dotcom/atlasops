@@ -1,8 +1,11 @@
+# Shared non-secret runtime settings loaded into both application containers.
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: atlasops-config
   namespace: atlasops
+# Match these resource names and URLs to Terraform outputs for your environment.
+# Credentials come from service-account IAM roles, not from this ConfigMap.
 data:
   AWS_REGION: us-east-1
   SQS_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/483598626808/AtlasOps-dev-events

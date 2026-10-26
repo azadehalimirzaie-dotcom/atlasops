@@ -1,3 +1,4 @@
+# Buffer events in a standard queue and move repeatedly failing messages to a dead-letter queue.
 module "sqs" {
   source  = "terraform-aws-modules/sqs/aws"
   version = "~> 5.2.2"
@@ -13,6 +14,7 @@ module "sqs" {
   create_dlq = true
   dlq_name   = "${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-events-dlq"
 
+  # After five receives without successful deletion, move the message to the DLQ.
   redrive_policy = {
     maxReceiveCount = 5
   }

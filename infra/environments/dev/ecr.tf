@@ -1,3 +1,4 @@
+# Create separate private image repositories for the ingestion API and worker.
 module "ecr" {
   source  = "terraform-aws-modules/ecr/aws"
   version = "~> 3.2.0"
@@ -12,9 +13,11 @@ module "ecr" {
   attach_repository_policy      = false
   repository_encryption_type    = var.encryption_type
   repository_image_scan_on_push = var.image_scan_on_push
+  # Development convenience: deleting a repository also deletes any images it contains.
   repository_force_delete       = true
   #Must be one of: `MUTABLE`, `MUTABLE_WITH_EXCLUSION`, `IMMUTABLE`, or `IMMUTABLE_WITH_EXCLUSION`. Defaults to `IMMUTABLE`
   repository_image_tag_mutability = var.image_tag_mutability
+  # This retention rule only expires v-prefixed tags; CI commit-SHA tags are not covered.
   repository_lifecycle_policy = jsonencode({
     rules = [
       {

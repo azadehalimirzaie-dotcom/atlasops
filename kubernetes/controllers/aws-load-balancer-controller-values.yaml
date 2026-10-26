@@ -1,0 +1,17 @@
+# Helm values for the AWS Load Balancer Controller; install its chart separately.
+# Must match the Terraform-created EKS cluster.
+clusterName: AtlasOps-dev-eks
+region: us-east-1
+
+# Replace with terraform output -raw vpc_id after creating your environment.
+vpcId: vpc-09bdce08d0e0e6fe1
+
+# Run two controller replicas for availability.
+replicaCount: 2
+
+# Create the kube-system service account trusted by the controller IAM role in iam.tf.
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::483598626808:role/AtlasOps-dev-lb-controller

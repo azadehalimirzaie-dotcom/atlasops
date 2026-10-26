@@ -1,3 +1,4 @@
+# Tell an existing Argo CD installation to reconcile the base manifests from Git.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -6,17 +7,20 @@ metadata:
 spec:
   project: default
 
+  # Track the main branch; controller, monitoring, and optional manifests are outside this path.
   source:
     repoURL: https://github.com/azadehalimirzaie-dotcom/atlasops.git
     targetRevision: main
     path: kubernetes/base
 
+  # Deploy into the same Kubernetes cluster where Argo CD is running.
   destination:
     server: https://kubernetes.default.svc
     namespace: atlasops
 
   syncPolicy:
     automated:
+      # Keep resources removed from Git; selfHeal restores drift on resources still managed in Git.
       prune: false
       selfHeal: true
     syncOptions:

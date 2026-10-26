@@ -1,9 +1,11 @@
+# Deploy background consumers that store SQS events in DynamoDB and publish critical alerts to SNS.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: worker
   namespace: atlasops
 spec:
+  # Run two pod replicas for availability; both select the same application label.
   replicas: 2
   selector:
     matchLabels:
@@ -13,8 +15,11 @@ spec:
       labels:
         app: worker
     spec:
+      # Use the app-specific service account and its scoped AWS IAM permissions.
       serviceAccountName: worker
+      # Allow up to 60 seconds for the worker to finish in-flight processing after SIGTERM.
       terminationGracePeriodSeconds: 60
+      # Run as the non-root user created in the image and use the default syscall filter.
       securityContext:
         runAsNonRoot: true
         runAsUser: 10001
@@ -22,10 +27,13 @@ spec:
           type: RuntimeDefault
       containers:
         - name: worker
+          # Pin to the immutable commit-SHA image built by CI; deployment PRs update this tag.
           image: 483598626808.dkr.ecr.us-east-1.amazonaws.com/atlasops-dev-worker:c140dffbc3adbed6fe336e38c9aca5d595c158d9
+          # Load queue, table, topic, and region settings from atlasops-config.
           envFrom:
             - configMapRef:
                 name: atlasops-config
+          # Requests reserve scheduling capacity; limits cap container CPU and memory use.
           resources:
             requests:
               cpu: "100m"
@@ -33,6 +41,7 @@ spec:
             limits:
               cpu: "500m"
               memory: "256Mi"
+          # Prevent privilege escalation and remove all Linux capabilities.
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:

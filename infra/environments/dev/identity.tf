@@ -1,3 +1,4 @@
+# Expose the authenticated AWS account and principal for checking which identity Terraform uses.
 data "aws_caller_identity" "current" {}
 
 output "aws_account_id" {

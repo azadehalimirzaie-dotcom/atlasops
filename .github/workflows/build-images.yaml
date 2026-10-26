@@ -1,5 +1,7 @@
+# Build both app images, publish them to ECR, and propose a GitOps image-tag update.
 name: Build and push AtlasOps images
 
+# Run manually or when application/build inputs change on main.
 on:
   workflow_dispatch:
   push:
@@ -10,6 +12,7 @@ on:
       - ".dockerignore"
       - ".github/workflows/build-images.yaml"
 
+# Request an OIDC token for short-lived AWS credentials and read access for checkout.
 permissions:
   id-token: write
   contents: read
@@ -19,6 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
+    # Build ingestion and worker independently; one failure does not cancel the other build.
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +66,7 @@ jobs:
           docker push "$IMAGE"
           echo "### Published image" >> "$GITHUB_STEP_SUMMARY"
           echo "\`$IMAGE\`" >> "$GITHUB_STEP_SUMMARY"
+  # Only after both images publish, open a PR updating the pinned Kubernetes image tags.
   update-manifests:
     name: Propose deployment update
     needs: build-and-push
@@ -69,6 +74,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
+    # This job needs repository and pull-request write access to propose the deployment PR.
     permissions:
       contents: write
       pull-requests: write

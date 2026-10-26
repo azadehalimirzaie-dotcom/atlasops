@@ -1,3 +1,4 @@
+# Provision networking, EKS, cluster add-ons, and managed EC2 worker capacity.
 # Discover available Availability Zones in the configured AWS region.
 data "aws_availability_zones" "available" {
   state = "available"
@@ -21,6 +22,14 @@ module "vpc" {
   enable_nat_gateway     = true
   single_nat_gateway     = var.single_nat_gateway
   one_nat_gateway_per_az = var.one_nat_gateway_per_az
+
+  public_subnet_tags = {
+  "kubernetes.io/role/elb" = "1" #identify:elb: public subnets for your internet-facing ALB.
+}
+
+private_subnet_tags = {
+  "kubernetes.io/role/internal-elb" = "1" #internal-elb: private subnets for an internal load balancer.
+}
   # Do not create a virtual private gateway for a site-to-site VPN.
   enable_vpn_gateway   = false
   create_igw           = true
@@ -71,6 +80,7 @@ module "eks" {
   node_security_group_description              = "Security group for EKS worker nodes"
   node_security_group_enable_recommended_rules = true
   node_security_group_use_name_prefix          = true
+  # Allow HTTP between members of the node security group for workload traffic.
   node_security_group_additional_rules = {
     ingress_http_between_nodes = {
       description = "Allow HTTP between worker nodes and their pods"
@@ -96,7 +106,12 @@ module "eks" {
     }
     kube-proxy = {}
     coredns    = {}
+    # Use the dedicated storage-controller IAM role for dynamically provisioned EBS volumes.
+    aws-ebs-csi-driver = {
+      service_account_role_arn = aws_iam_role.ebs_csi.arn
+     }
   }
+
 
   # Create an EKS managed node group in the private subnets configured above.
   eks_managed_node_groups = {

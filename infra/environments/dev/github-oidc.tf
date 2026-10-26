@@ -1,3 +1,4 @@
+# Allow GitHub Actions to obtain temporary AWS credentials and push application images to ECR.
 resource "aws_iam_openid_connect_provider" "github" {
   url            = "https://token.actions.githubusercontent.com"
   client_id_list = ["sts.amazonaws.com"]
@@ -5,6 +6,8 @@ resource "aws_iam_openid_connect_provider" "github" {
   tags = var.resource_tags
 }
 
+# Trust only tokens matching the configured repository/branch subject and STS audience.
+# The subject must exactly match the claims issued for this repository.
 resource "aws_iam_role" "github_actions" {
   name = "${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-github-actions"
 
@@ -32,6 +35,7 @@ resource "aws_iam_role" "github_actions" {
   tags = var.resource_tags
 }
 
+# Allow registry authentication globally and image uploads only to the two app repositories.
 resource "aws_iam_role_policy" "github_ecr_push" {
   name = "push-atlas-images"
   role = aws_iam_role.github_actions.name

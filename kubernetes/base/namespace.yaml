@@ -1,3 +1,4 @@
+# Group all AtlasOps application resources in a dedicated Kubernetes namespace.
 apiVersion: v1
 kind: Namespace
 metadata:

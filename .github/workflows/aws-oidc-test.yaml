@@ -1,9 +1,4 @@
-# Sample workflow to access AWS resources when workflow is tied to branch
-# The workflow creates a static website using Amazon S3
-# This workflow uses actions that are not certified by GitHub.
-# They are provided by a third-party and are governed by
-# separate terms of service, privacy policy, and support
-# documentation.
+# Manually verify GitHub OIDC claims and the AWS identity assumed by the workflow.
 name: test AWS OIDC
 on:
   workflow_dispatch
@@ -18,6 +13,7 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      # Print selected identity claims for troubleshooting; do not print the full JWT.
       - name: Inspect OIDC identity claims
         shell: python
         run: |
@@ -47,6 +43,7 @@ jobs:
 
           for key in ["iss", "aud", "sub", "repository", "ref"]:
               print(f"{key}: {claims.get(key)}") 
+      # Exchange the GitHub token for temporary credentials using the configured AWS trust policy.
       - name: Authenticate to AWS using OIDC
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
@@ -54,5 +51,6 @@ jobs:
           role-session-name: atlasops-oids-test
           aws-region: us-east-1
    
+      # Confirm which role and account AWS sees after authentication.
       - name: Show AWS Identity
         run: aws sts get-caller-identity

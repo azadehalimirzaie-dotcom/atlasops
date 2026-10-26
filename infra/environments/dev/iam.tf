@@ -1,3 +1,4 @@
+# Define AWS service roles, controller roles, and the policies required by the EKS cluster.
 # IAM role used by the EKS service to manage the cluster's AWS resources.
 # The EKS module in main.tf uses this role as its control-plane role.
 resource "aws_iam_role" "eks_cluster" {
@@ -82,6 +83,7 @@ resource "terraform_data" "eks_cluster_role" {
   depends_on = [aws_iam_role_policy_attachment.eks_cluster]
 }
 
+# Delay passing the node role to EKS until every required node policy has been attached.
 resource "terraform_data" "eks_node_role" {
   input = aws_iam_role.eks_nodes.arn
   depends_on = [
@@ -90,4 +92,75 @@ resource "terraform_data" "eks_node_role" {
     aws_iam_role_policy_attachment.eks_ecr_pull,
     aws_iam_role_policy_attachment.eks_ssm,
   ]
+}
+##########################
+#load-balancer_controller
+##########################
+# IRSA trust-policy structure for the Load Balancer Controller. It allows the Kubernetes service account named aws-load-balancer-controller in namespace kube-system to assume this role.
+resource "aws_iam_role" "lb_controller" {
+  name = "${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-lb-controller"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = module.eks.oidc_provider_arn # trust tokens from this Kubernetes cluster
+      }
+      Action = "sts:AssumeRoleWithWebIdentity" # exchange that token for credentials
+      Condition = {
+        StringEquals = {
+          "${module.eks.oidc_provider}:aud" = "sts.amazonaws.com"
+          "${module.eks.oidc_provider}:sub" = "system:serviceaccount:kube-system:aws-load-balancer-controller"
+        }
+      }
+    }]
+  })
+
+  tags = var.resource_tags
+}
+
+# Load controller permissions from the checked-in policy JSON; no permissions are embedded here.
+resource "aws_iam_policy" "lb_controller" {
+  name = "${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-lb-controller"
+  policy = file("${path.module}/policies/aws-loadbalancer-controller.json")
+  tags = var.resource_tags
+}
+# Attach the load-balancer permissions to the controller role used by its service account.
+resource "aws_iam_role_policy_attachment" "lb_controller" {
+  role       = aws_iam_role.lb_controller.name
+  policy_arn = aws_iam_policy.lb_controller.arn
+}
+
+##########################################
+#EBS_CSI
+##########################################
+# Intended role for the EBS CSI controller, which provisions and attaches EBS volumes.
+resource "aws_iam_role" "ebs_csi" {
+  name = "${var.resource_tags["Project"]}-${var.resource_tags["Environment"]}-ebs-csi"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Federated = module.eks.oidc_provider_arn
+      }
+      Action = "sts:AssumeRoleWithWebIdentity"
+
+      Condition = {
+        StringEquals = {
+          "${module.eks.oidc_provider}:sub" = "system:serviceaccount:kube-system:ebs-csi-controller-sa"
+          "${module.eks.oidc_provider}:aud" = "sts.amazonaws.com"
+        }
+      }
+    }]
+  })
+
+  tags = var.resource_tags
+}
+# Grant the storage controller AWS-managed permissions for EBS volume operations.
+resource "aws_iam_role_policy_attachment" "ebs_csi" {
+  role       = aws_iam_role.ebs_csi.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEBSCSIDriverPolicyV2"
 }

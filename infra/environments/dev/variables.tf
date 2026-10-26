@@ -1,3 +1,4 @@
+# Define deployment inputs; override defaults using tfvars or workspace variables.
 #######################
 #VPC
 ########################
@@ -77,6 +78,7 @@ variable "resource_tags" {
   }
 }
 
+# Set this to your current public IPv4 CIDR; main.tf uses it to restrict the EKS public API.
 variable "my_public_ipv4" {
   description = "The public IPv4 address for my local machine to allow access to the VPC"
   type        = string

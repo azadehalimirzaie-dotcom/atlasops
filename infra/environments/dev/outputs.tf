@@ -1,3 +1,4 @@
+# Expose resource IDs, endpoints, and role ARNs needed to configure applications and cluster tools.
 #########################
 #VPC
 ########################
@@ -173,4 +174,12 @@ output "subscriptions" {
 output "github_actions_role_arn" {
   description = "IAM role assumed by GitHub Actions to push AtlasOps images."
   value       = aws_iam_role.github_actions.arn
+}
+
+#####################
+#loadbalancer_controller
+#####################
+output "lb_controller_role_arn" {
+  description = "IAM role ARN for the AWS Load Balancer Controller."
+  value       = aws_iam_role.lb_controller.arn
 }

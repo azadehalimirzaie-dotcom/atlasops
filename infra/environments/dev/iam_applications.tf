@@ -1,3 +1,5 @@
+# Use IAM Roles for Service Accounts (IRSA) to give each app only its required AWS permissions.
+# Keep the namespace in trust policies aligned with the Kubernetes service-account manifests.
 locals {
   application_namespace = "atlasops"
 }
