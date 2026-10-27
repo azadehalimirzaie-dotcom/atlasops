@@ -1,12 +1,19 @@
-# Helm overrides for kube-prometheus-stack: cluster metrics and Grafana dashboards.
 grafana:
   enabled: true
-  # Keep Grafana internal; use port-forwarding to view dashboards.
   service:
     type: ClusterIP
-  # Grafana data is ephemeral and is lost when its pod is replaced.
+
   persistence:
-    enabled: false
+    enabled: true
+    type: pvc
+    storageClassName: gp3
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+
+  deploymentStrategy:
+    type: Recreate
+
   defaultDashboardsTimezone: Europe/Berlin
   resources:
     requests:
@@ -14,45 +21,52 @@ grafana:
       memory: 128Mi
     limits:
       memory: 512Mi
+
 prometheus:
   prometheusSpec:
     replicas: 1
-    # Keep a small development metrics window, bounded by time and retention size.
-    retention: 6h
-    retentionSize: "1GB"
-    # Collect metrics and evaluate rules every 30 seconds.
+    retention: 7d
+    retentionSize: "8GB"
     scrapeInterval: 30s
     evaluationInterval: 30s
+
     resources:
       requests:
         cpu: 200m
         memory: 512Mi
       limits:
         memory: 1536Mi
-    # Use ephemeral pod storage; Prometheus history is lost when the pod is replaced.
+
     storageSpec:
-      emptyDir:
-        sizeLimit: 2Gi
-# Keep the first installation focused on metrics and dashboards.
-# Existing CloudWatch/SNS alerting continues separately.
+      volumeClaimTemplate:
+        spec:
+          storageClassName: gp3
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+
+# CloudWatch/SNS continues handling the existing DLQ alerts.
 alertmanager:
   enabled: false
-# These control-plane components are managed by AWS.
-# Disable the chart's direct scraping of their private endpoints.
+
+# AWS-managed control-plane components.
 kubeEtcd:
   enabled: false
 kubeControllerManager:
   enabled: false
 kubeScheduler:
   enabled: false
-# The operator reconciles Prometheus custom resources into running workloads.
+
 prometheusOperator:
   resources:
     requests:
       cpu: 50m
       memory: 128Mi
+    limits:
       memory: 256Mi
-# Export Kubernetes object state, such as desired and available deployment replicas.
+
 kube-state-metrics:
   resources:
     requests:
@@ -60,10 +74,11 @@ kube-state-metrics:
       memory: 64Mi
     limits:
       memory: 128Mi
-# Export host-level metrics from cluster nodes.
+
 prometheus-node-exporter:
   resources:
     requests:
       cpu: 20m
       memory: 32Mi
     limits:
+      memory: 128Mi
