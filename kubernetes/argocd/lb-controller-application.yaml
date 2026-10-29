@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+spec:
+  project: default
+
+  sources:
+    # Official AWS Helm chart.
+    - repoURL: https://aws.github.io/eks-charts
+      chart: aws-load-balancer-controller
+      targetRevision: "3.6.1"
+      helm:
+        releaseName: aws-load-balancer-controller
+        valueFiles:
+          - $values/kubernetes/controllers/aws-load-balancer-controller-values.yaml
+
+    # Your repository supplies the Helm values.
+    - repoURL: https://github.com/azadehalimirzaie-dotcom/atlasops.git
+      targetRevision: main
+      ref: values
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+
+  syncPolicy:
+    automated:
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
