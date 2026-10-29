@@ -176,6 +176,12 @@ def main():
     ).Table(table_name)
 
     logger.info("worker_started table=%s", table_name)
+    metrics_port = int(os.getenv("METRICS_PORT", "8000"))
+    start_http_server(metrics_port, addr="0.0.0.0")
+    logger.info("metrics_server_started port=%s", metrics_port)
+
+    logger.info("worker_started table=%s", table_name)
+
 
     while not stop_requested.is_set():
         try:
