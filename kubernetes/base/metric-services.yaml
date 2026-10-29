@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingestion-metrics
+  namespace: atlasops
+  labels:
+    app: ingestion
+    purpose: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app: ingestion
+  ports:
+    - name: metrics
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: worker-metrics
+  namespace: atlasops
+  labels:
+    app: worker
+    purpose: metrics
+spec:
+  type: ClusterIP
+  selector:
+    app: worker
+  ports:
+    - name: metrics
+      port: 8000
+      targetPort: 8000
