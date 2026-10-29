@@ -28,7 +28,7 @@ spec:
       containers:
         - name: worker
           # Pin to the immutable commit-SHA image built by CI; deployment PRs update this tag.
-          image: 483598626808.dkr.ecr.us-east-1.amazonaws.com/atlasops-dev-worker:f8d80c228687a4d56833484a3b3790f2713f77cd
+          image: 483598626808.dkr.ecr.us-east-1.amazonaws.com/atlasops-dev-worker:85657821d99aeec3fa6ffc7ebaa7a9cb7d3c0588
           # Load queue, table, topic, and region settings from atlasops-config.
           envFrom:
             - configMapRef:
