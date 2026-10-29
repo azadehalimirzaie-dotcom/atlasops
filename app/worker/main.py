@@ -3,13 +3,14 @@ import os
 import signal
 import threading
 from datetime import datetime, timezone
+from time import perf_counter
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from event_schema import NetworkEvent
-
+from prometheus_client import Counter, Histogram, start_http_server
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,6 +19,53 @@ logging.basicConfig(
 logger = logging.getLogger("atlasops.worker")
 stop_requested = threading.Event()
 
+STORAGE_RESULTS = Counter(
+    "atlasops_worker_storage_results_total",
+    "Completed DynamoDB storage checks",
+    ["outcome"],
+)
+
+NOTIFICATION_RESULTS = Counter(
+    "atlasops_worker_notification_results_total",
+    "Completed notification handling operations",
+    ["outcome"],
+)
+
+PROCESSING_ATTEMPTS = Counter(
+    "atlasops_worker_processing_attempts_total",
+    "Message processing attempts, including SQS retries",
+    ["outcome"],
+)
+
+PROCESSING_FAILURES = Counter(
+    "atlasops_worker_processing_failures_total",
+    "Failed message processing attempts by stage",
+    ["stage"],
+)
+
+PROCESSING_DURATION = Histogram(
+    "atlasops_worker_processing_duration_seconds",
+    "Message processing time, excluding queue polling and retry delay",
+    buckets=(0.01, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60),
+)
+
+QUEUE_RECEIVE_FAILURES = Counter(
+    "atlasops_worker_queue_receive_failures_total",
+    "Failed SQS receive operations",
+)
+
+# Make known outcomes visible even before the first event arrives.
+for outcome in ("stored", "duplicate"):
+    STORAGE_RESULTS.labels(outcome=outcome)
+
+for outcome in ("published", "already_published", "not_required"):
+    NOTIFICATION_RESULTS.labels(outcome=outcome)
+
+for outcome in ("success", "failed"):
+    PROCESSING_ATTEMPTS.labels(outcome=outcome)
+
+for stage in ("validation", "storage", "notification", "acknowledgement"):
+    PROCESSING_FAILURES.labels(stage=stage)
 
 def request_shutdown(signum, frame):
     logger.info("shutdown_requested signal=%s", signum)
@@ -142,22 +190,47 @@ def main():
             stop_requested.wait(5)
             continue
 
+
         for message in response.get("Messages", []):
+            started_at = perf_counter()
+            stage = "validation"
+            failed = False
+
             try:
                 event = NetworkEvent.model_validate_json(message["Body"])
-                outcome = store_event(table, event)
 
+                stage = "storage"
+                outcome = store_event(table, event)
+                STORAGE_RESULTS.labels(outcome=outcome).inc()
+
+                stage = "notification"
                 notification = notify_if_needed(
                     table,
                     sns,
                     topic_arn,
                     event.event_id,
                 )
+                NOTIFICATION_RESULTS.labels(outcome=notification).inc()
 
+                stage = "acknowledgement"
                 sqs.delete_message(
                     QueueUrl=queue_url,
                     ReceiptHandle=message["ReceiptHandle"],
                 )
+
+            except Exception:
+                failed = True
+                PROCESSING_ATTEMPTS.labels(outcome="failed").inc()
+                PROCESSING_FAILURES.labels(stage=stage).inc()
+
+                logger.exception(
+                    "event_processing_failed message_id=%s stage=%s",
+                    message.get("MessageId"),
+                    stage,
+                )
+
+            else:
+                PROCESSING_ATTEMPTS.labels(outcome="success").inc()
 
                 logger.info(
                     "event_processed event_id=%s outcome=%s notification=%s",
@@ -165,12 +238,14 @@ def main():
                     outcome,
                     notification,
                 )
-            except Exception:
-                logger.exception(
-                    "event_processing_failed message_id=%s",
-                    message.get("MessageId"),
-                )
+
+            finally:
+                PROCESSING_DURATION.observe(perf_counter() - started_at)
+
+            if failed:
+                # Leave the message on SQS for retry.
                 stop_requested.wait(2)
+        
 
     logger.info("worker_stopped")
 

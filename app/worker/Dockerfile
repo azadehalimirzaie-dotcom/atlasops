@@ -14,5 +14,6 @@ COPY app/event_schema.py .
 COPY app/worker/main.py .
 
 USER 10001
+EXPOSE 8000
 
 CMD ["python", "main.py"]
