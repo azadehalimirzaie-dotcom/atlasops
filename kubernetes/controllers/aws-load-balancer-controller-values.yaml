@@ -4,7 +4,7 @@ clusterName: AtlasOps-dev-eks
 region: us-east-1
 
 # Replace with terraform output -raw vpc_id after creating your environment.
-vpcId: vpc-09bdce08d0e0e6fe1
+vpcId: vpc-09460c377a6f1c793
 
 # Run two controller replicas for availability.
 replicaCount: 2
